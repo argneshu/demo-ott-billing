@@ -1,0 +1,15 @@
+# === AIRE — auto-managed (do not edit by hand) ===
+# 'merge=union' is a BUILT-IN git driver — no install required, no hooks.
+# It concatenates both sides of any conflicting hunk, so it is safe ONLY for append-only files.
+# NOTE: GitHub's PR merge button does not run merge drivers; union helps local merges only.
+# Parallel work units never touch these shared files at all — they write
+# runtime-artifacts/stories/<unit-key>/ instead (aire-workflow/common/parallel-work-state.md).
+
+runtime-artifacts/audit.md merge=union
+# runtime-artifacts/aire-state.md deliberately has NO union driver: its rows are edited in place,
+# and a union merge would keep both versions of a changed row (silent duplicates) instead of
+# surfacing the conflict.
+# === end AIRE ===
+
+# Shell scripts must keep LF endings, or sh fails on Windows checkouts (the work-unit guard hook runs locally).
+*.sh text eol=lf

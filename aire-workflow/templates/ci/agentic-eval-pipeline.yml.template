@@ -1,0 +1,979 @@
+# AIRE agentic eval pipeline — generated from the versioned template by filling the manifest slots.
+# 🔴 Do not hand-edit the fixed text. Every varying value comes from the `ci` manifest in
+#    tests/.evals/config.json (common/eval-framework.md Section 1). Regenerate rather than editing in place.
+#
+# 🔴 NINE-JOB SHAPE (CI-SPLIT-JOBS-PLAN.md Section 1) — one job per gate stage, conditional on the
+#    directory-structure fact `setup` computes (common/ci-pipeline-generation.md Section 4.0j). A job
+#    whose `if:` is unmet reports result "skipped" — that is an EARNED N/A, never a failure and never a
+#    silent pass; `merge-verdict.sh` (the `verdict` job) is what turns every job's own
+#    `needs.<job>.result` into the SAME `eval.json` + `failed-gates.txt` shape the single-job pipeline
+#    used to produce, so `auto-fix-agent.*` needs zero changes.
+name: "AIRE agentic eval pipeline"
+
+on:
+  pull_request:
+    branches:
+      - "${BASE_BRANCH}"
+${PR_BRANCH_FILTERS}
+  push:
+    branches:
+      - "${BASE_BRANCH}"
+  workflow_dispatch:
+
+# 🔴 Never add pull_request_target — it runs base secrets against untrusted head code.
+
+concurrency:
+  group: "aire-eval-${{ github.workflow }}-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      key: "${{ steps.evalkey.outputs.key }}"
+      base_sha: "${{ steps.basesha.outputs.sha }}"
+      has_node: "${{ steps.readmanifest.outputs.has_node }}"
+      node_version: "${{ steps.readmanifest.outputs.node_version }}"
+      has_python: "${{ steps.readmanifest.outputs.has_python }}"
+      python_version: "${{ steps.readmanifest.outputs.python_version }}"
+      has_java: "${{ steps.readmanifest.outputs.has_java }}"
+      java_version: "${{ steps.readmanifest.outputs.java_version }}"
+      has_go: "${{ steps.readmanifest.outputs.has_go }}"
+      go_version: "${{ steps.readmanifest.outputs.go_version }}"
+      has_dotnet: "${{ steps.readmanifest.outputs.has_dotnet }}"
+      dotnet_version: "${{ steps.readmanifest.outputs.dotnet_version }}"
+      has_unit_tests: "${{ steps.stagescopes.outputs.has_unit_tests }}"
+      has_behavior_tests: "${{ steps.stagescopes.outputs.has_behavior_tests }}"
+      has_e2e_tests: "${{ steps.stagescopes.outputs.has_e2e_tests }}"
+      manifest_resolved: "${{ steps.stagescopes.outputs.manifest_resolved }}"
+    steps:
+      - name: "Checkout (full history for delta diffs)"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Resolve EVAL_KEY"
+        id: evalkey
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: bash tests/.evals/scripts/resolve-eval-key.sh "$HEAD_REF" "$REF_NAME"
+
+      - name: "Resolve base SHA"
+        id: basesha
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # 🔴 merge-base of the base branch's CURRENT tip and HEAD — see the single-job template's
+            #    own long-form comment (git history) for the full rationale (V7, Section 4.0b.1).
+            echo "sha=$(git merge-base "${{ github.event.pull_request.base.sha }}" HEAD)" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Purge inherited evidence — runs BEFORE any gate. Section 4.0e. ──
+      # 🔴 PRESERVE static/baseline/, purge everything else. run-static-evals.sh's delta_diff() REUSES
+      #    an already-committed baseline file when one exists (dev-implement.md Step 4.6 captures it
+      #    once, on the story branch, before any code is generated, and commits it — a TRACKED path,
+      #    never disposable scratch space) instead of re-deriving it via a fragile stash/checkout/
+      #    restore dance. A bare `rm -rf` of the whole EVIDENCE_DIR deletes that committed baseline
+      #    FROM DISK (even though it stays committed in git history), which makes `[ ! -f "$base" ]`
+      #    look true and forces every gate down the fallback checkout path instead — which then hits a
+      #    real git edge case ("untracked working tree files would be overwritten by checkout") and
+      #    aborts. Observed in production exactly this way, on the first story ever to exercise this
+      #    interaction (every earlier story touched no changed files under a real root, so it always
+      #    short-circuited to N/A before reaching this code path). The purge's own job — stopping a
+      #    locally-committed eval.json/eval-summary.md from fooling CI into publishing a verdict it
+      #    never actually computed — has nothing to do with the baseline capture files; only eval.json,
+      #    eval-summary.md, the `-head` result files and `judge/` need purging.
+      - name: "Purge inherited evidence"
+        env:
+          EVAL_KEY: "${{ steps.evalkey.outputs.key }}"
+        run: |
+          EVIDENCE_DIR="reports/eval-evidence/${EVAL_KEY}"
+          BASELINE_DIR="${EVIDENCE_DIR}/static/baseline"
+          PRESERVE=""
+          if [ -d "$BASELINE_DIR" ]; then
+            PRESERVE="$(mktemp -d)"
+            cp -a "$BASELINE_DIR" "${PRESERVE}/baseline"
+          fi
+          rm -rf tests/.evals/_run "$EVIDENCE_DIR"
+          if [ -n "$PRESERVE" ]; then
+            mkdir -p "${EVIDENCE_DIR}/static"
+            mv "${PRESERVE}/baseline" "$BASELINE_DIR"
+            rm -rf "$PRESERVE"
+          fi
+
+      - name: "Read manifest"
+        id: readmanifest
+        run: bash tests/.evals/scripts/read-manifest.sh >> "$GITHUB_OUTPUT"
+
+      - name: "Setup Node"
+        if: steps.readmanifest.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ steps.readmanifest.outputs.node_version || '20' }}"
+
+      - name: "Setup Python"
+        if: steps.readmanifest.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ steps.readmanifest.outputs.python_version || '3.12' }}"
+
+      - name: "Setup Java"
+        if: steps.readmanifest.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ steps.readmanifest.outputs.java_version || '21' }}"
+
+      - name: "Setup Go"
+        if: steps.readmanifest.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ steps.readmanifest.outputs.go_version || '1.22' }}"
+
+      - name: "Setup .NET"
+        if: steps.readmanifest.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ steps.readmanifest.outputs.dotnet_version || '8.0' }}"
+
+      - name: "Setup other toolchains"
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh toolchain "${{ steps.basesha.outputs.sha }}"
+
+      - name: "Install dependencies"
+        id: install
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh install "${{ steps.basesha.outputs.sha }}"
+
+      - name: "Compile / build"
+        id: build
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh build "${{ steps.basesha.outputs.sha }}"
+
+      # ── NEW — detects the directory/config scope facts every downstream job's `if:` reads
+      #    (common/ci-pipeline-generation.md Section 4.0j, CI-SPLIT-JOBS-PLAN.md Section 2). ──
+      - name: "Detect stage scopes"
+        id: stagescopes
+        run: bash tests/.evals/scripts/detect-stage-scopes.sh "${{ steps.evalkey.outputs.key }}" >> "$GITHUB_OUTPUT"
+
+      # ── Package the fully installed+built workspace ONCE here and hand it to every gate job as one
+      #    artifact — this is what avoids paying the install/build cost 6x (CI-SPLIT-JOBS-PLAN.md
+      #    Section 1's own "avoiding the 6x install/build cost" note). Deterministic within one run:
+      #    tar+artifact, never actions/cache (cache is best-effort and can miss).
+      # 🔴 .git is INCLUDED, deliberately — static-evals (run-static-evals.sh's delta_diff(): git stash /
+      #    git checkout $BASE_SHA / git diff), unit-coverage (ci-manifest-runner.sh's own
+      #    `git diff --name-only` + lib-manifest.sh's `git rev-parse --show-toplevel`) and judge-gates
+      #    (run-evals.sh's `git diff "$BASE_SHA...HEAD"` building the judge prompt) all require real git
+      #    history in the EXTRACTED workspace to do the one thing every one of them exists to do: diff
+      #    against the base ref. Stripping .git here does not just risk a loud failure (static-evals/
+      #    unit-coverage do fail loudly, "fatal: not a git repository") — judge-gates' `git diff ... ||
+      #    true` swallows the error into an EMPTY diff, which is then silently scored as J1/J2 "N/A —
+      #    empty diff, nothing to score", never erroring at all. Observed in production exactly this way.
+      #    self-repair is unaffected either way — it always re-checks out independently on a writable,
+      #    pushable branch, never from this artifact. ──
+      - name: "Package workspace"
+        run: tar -czf /tmp/workspace.tar.gz .
+
+      - name: "Upload workspace"
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-${{ steps.evalkey.outputs.key }}
+          path: /tmp/workspace.tar.gz
+          retention-days: 1
+
+  # 🔴 No job-level `if:` — D1-D7 run unconditionally (CI-SPLIT-JOBS-PLAN.md Section 1's own table:
+  #    "-- (D1-D7 always apply if manifest_resolved)"). An unresolved manifest degrades to an EARNED
+  #    N/A per gate INSIDE run-static-evals.sh itself (empty ci.roots[], Section 3.0) — never a job-
+  #    level skip; a job skip and a script-earned N/A are different signals and this stage uses the
+  #    second one, exactly as the single-job pipeline always did.
+  static-evals:
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Download workspace"
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-${{ needs.setup.outputs.key }}
+          path: /tmp/workspace-download
+      - name: "Extract workspace"
+        run: tar -xzf /tmp/workspace-download/workspace.tar.gz -C "$GITHUB_WORKSPACE"
+
+      - name: "Setup Node"
+        if: needs.setup.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '20' }}"
+      - name: "Setup Python"
+        if: needs.setup.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ needs.setup.outputs.python_version || '3.12' }}"
+      - name: "Setup Java"
+        if: needs.setup.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ needs.setup.outputs.java_version || '21' }}"
+      - name: "Setup Go"
+        if: needs.setup.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ needs.setup.outputs.go_version || '1.22' }}"
+      - name: "Setup .NET"
+        if: needs.setup.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ needs.setup.outputs.dotnet_version || '8.0' }}"
+
+      # 🔴 RE-INSTALL EVAL TOOLS ONLY — the workspace tarball carries repo FILES, never a global/CLI
+      #    tool install `ci.roots[].toolInstallCommands` (semgrep via pip, gitleaks via curl into
+      #    /usr/local/bin, mypy/pip-audit/pip-licenses/radon/etc.) made on `setup`'s OWN runner —
+      #    this job runs on a SEPARATE runner and never reaches them. D3_sast/D7_secrets (and any
+      #    other tool-backed gate) fail "tool ... not installed on this runner" without this —
+      #    observed in production exactly this way. `eval-tools` is a standalone, unconditional mode
+      #    (ci-manifest-runner.sh) — it installs ONLY the tools, never the project's own dependencies
+      #    (those stay diff-scoped and belong to `install` mode alone, which only `setup` runs; this
+      #    job's own project deps ARE already in the tarball for stacks whose package manager installs
+      #    into the repo tree, e.g. node_modules/).
+      - name: "Install eval tools"
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh eval-tools
+
+      - name: "Stage 1: static evals (delta-scoped)"
+        id: static
+        env:
+          EVAL_KEY: "${{ needs.setup.outputs.key }}"
+        run: bash tests/.evals/scripts/run-static-evals.sh "${{ needs.setup.outputs.base_sha }}"
+
+      # 🔴 `path:` names the repo-relative directory to upload, but the artifact's OWN root is that
+      #    directory's contents — actions/upload-artifact@v4 strips the least-common-ancestor of
+      #    whatever `path:` it is given. Downloaded by `verdict`, this artifact's files land FLAT at
+      #    tests/.evals/_run/downloaded/gate-static/<filename> — never nested back under this same
+      #    repo-relative path. merge-verdict.sh reads it that way; keep both sides in sync.
+      - name: "Upload gate evidence"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-static
+          path: reports/eval-evidence/${{ needs.setup.outputs.key }}/static/
+          if-no-files-found: warn
+          retention-days: 1
+
+  unit-coverage:
+    needs: setup
+    if: needs.setup.outputs.has_unit_tests == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Download workspace"
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-${{ needs.setup.outputs.key }}
+          path: /tmp/workspace-download
+      - name: "Extract workspace"
+        run: tar -xzf /tmp/workspace-download/workspace.tar.gz -C "$GITHUB_WORKSPACE"
+
+      - name: "Setup Node"
+        if: needs.setup.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '20' }}"
+      - name: "Setup Python"
+        if: needs.setup.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ needs.setup.outputs.python_version || '3.12' }}"
+      - name: "Setup Java"
+        if: needs.setup.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ needs.setup.outputs.java_version || '21' }}"
+      - name: "Setup Go"
+        if: needs.setup.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ needs.setup.outputs.go_version || '1.22' }}"
+      - name: "Setup .NET"
+        if: needs.setup.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ needs.setup.outputs.dotnet_version || '8.0' }}"
+
+      # 🔴 RE-INSTALL PROJECT DEPENDENCIES — unlike eval tools (always unconditional), this reuses
+      #    `install` mode UNCHANGED, so it stays correctly diff-scoped: a root this PR did not touch
+      #    is skipped here exactly as `coverage` mode will skip it right after, for the same reason.
+      #    Needed because a package manager whose default install location is OUTSIDE the repo tree
+      #    (bare `pip install`, no venv — confirmed empirically: pip's own site-packages resolves to
+      #    the interpreter's install tree, never the cwd, on any machine including a GH-hosted
+      #    runner; bare `bundle install` without a local vendor path behaves the same way) leaves
+      #    NOTHING for a fresh runner's extracted tarball to have captured — `unit-coverage` runs on
+      #    a SEPARATE runner from `setup`, which is where that install actually happened. Node
+      #    (`node_modules/`, repo-local by default) and the auto-restoring stacks (Go/Maven-Gradle/
+      #    .NET re-resolve missing deps from a registry at test-run time, just slower) don't strictly
+      #    need this, but it is cheap and correctly diff-scoped to N/A for them, so it stays
+      #    unconditional-per-root rather than guessing which stack actually needs it.
+      - name: "Setup other toolchains"
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh toolchain "${{ needs.setup.outputs.base_sha }}"
+
+      - name: "Install dependencies"
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh install "${{ needs.setup.outputs.base_sha }}"
+
+      - name: "Stage 2: unit + coverage"
+        id: unit
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh coverage "${{ needs.setup.outputs.base_sha }}"
+
+      - name: "Coverage gate (delta-scoped)"
+        id: coverage
+        env:
+          EVAL_KEY: "${{ needs.setup.outputs.key }}"
+        run: bash tests/.evals/scripts/run-static-evals.sh "${{ needs.setup.outputs.base_sha }}" --coverage-only
+
+      # 🔴 CROSS-JOB COVERAGE HANDOFF — `sonarqube` runs on a SEPARATE extracted copy of the SAME
+      #    pre-test `setup` tarball, which was packaged BEFORE any test ran and therefore never
+      #    contains a coverage report. Without this, Sonar's "coverage on new code" measurement finds
+      #    no coverage data at all and reports 0% — failing the quality gate for a change that is
+      #    actually well-covered. Observed in production exactly this way, on the first story to reach
+      #    a real coverage measurement combined with an enabled SonarQube gate (every earlier story/
+      #    smoke run never got this far, so the gap stayed invisible). Stage each root's own
+      #    `coverageReportPath` into a flat, unambiguous name (root-tag + basename — never rely on
+      #    actions/upload-artifact@v4 preserving a repo-relative path across multiple different root
+      #    directories, the same LCA-stripping lesson as the gate-* artifacts) and hand it to
+      #    `sonarqube` as its own small artifact.
+      - name: "Collect coverage reports"
+        if: always()
+        run: |
+          mkdir -p tests/.evals/_run/coverage-payload
+          if [ -f tests/.evals/_run/merged-manifest.json ]; then
+            while IFS=$'\t' read -r root report_path; do
+              [ -z "$root" ] && continue
+              [ -z "$report_path" ] && continue
+              src="${root}/${report_path}"
+              if [ -f "$src" ]; then
+                tag="$(printf '%s' "$root" | tr '/' '_')"
+                cp "$src" "tests/.evals/_run/coverage-payload/${tag}__$(basename "$report_path")"
+              fi
+            done < <(jq -r '.[] | select(.coverageReportPath) | [.root, .coverageReportPath] | @tsv' tests/.evals/_run/merged-manifest.json | tr -d '\r')
+          fi
+
+      - name: "Upload coverage reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports-${{ needs.setup.outputs.key }}
+          path: tests/.evals/_run/coverage-payload/
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: "Upload gate evidence"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-unit
+          path: reports/eval-evidence/${{ needs.setup.outputs.key }}/static/
+          if-no-files-found: warn
+          retention-days: 1
+
+  behavior-gherkin:
+    needs: setup
+    if: needs.setup.outputs.has_behavior_tests == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Download workspace"
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-${{ needs.setup.outputs.key }}
+          path: /tmp/workspace-download
+      - name: "Extract workspace"
+        run: tar -xzf /tmp/workspace-download/workspace.tar.gz -C "$GITHUB_WORKSPACE"
+
+      # 🔴 Present for structural uniformity with every other gate job (#7a: "nothing is ever added or
+      #    removed from this file for a new stack, only enabled") even though this job's own step never
+      #    invokes a host toolchain directly — Podman encapsulates the entire behavioural run.
+      - name: "Setup Node"
+        if: needs.setup.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '20' }}"
+      - name: "Setup Python"
+        if: needs.setup.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ needs.setup.outputs.python_version || '3.12' }}"
+      - name: "Setup Java"
+        if: needs.setup.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ needs.setup.outputs.java_version || '21' }}"
+      - name: "Setup Go"
+        if: needs.setup.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ needs.setup.outputs.go_version || '1.22' }}"
+      - name: "Setup .NET"
+        if: needs.setup.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ needs.setup.outputs.dotnet_version || '8.0' }}"
+
+      - name: "Stage 2: behaviour (Gherkin, Podman)"
+        id: behavior
+        run: |
+          mkdir -p tests/.evals/_run
+          podman build -t "${BEHAVIOR_IMAGE_TAG}" -f tests/.evals/behavior/Containerfile .
+          if [ "${{ github.base_ref }}" = "${BASE_BRANCH}" ]; then tiers="b1 b2 b3"; else tiers="b1 b2"; fi
+          for skip in b1 b2 b3; do
+            case " $tiers " in *" $skip "*) ;; *) echo "N/A" > "tests/.evals/_run/behavior${skip^^}.status" ;; esac
+          done
+          step_fail=0
+          for t in $tiers; do
+            trc=0
+            podman run --rm -e AIRE_STORY_KEY="${{ needs.setup.outputs.key }}" -v "$PWD:/work:Z" -w /work "${BEHAVIOR_IMAGE_TAG}" "bash tests/.evals/behavior/run.sh $t" || trc=$?
+            if [ "$trc" -eq 0 ]; then
+              echo "PASS" > "tests/.evals/_run/behavior${t^^}.status"
+            elif [ "$trc" -eq 3 ]; then
+              echo "N/A" > "tests/.evals/_run/behavior${t^^}.status"
+            else
+              echo "FAIL" > "tests/.evals/_run/behavior${t^^}.status"
+              step_fail=1
+            fi
+          done
+          exit "$step_fail"
+
+      - name: "Upload gate evidence"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-behavior
+          path: tests/.evals/_run/behavior*.status
+          if-no-files-found: warn
+          retention-days: 1
+
+  playwright-e2e:
+    needs: setup
+    if: needs.setup.outputs.has_e2e_tests == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Download workspace"
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-${{ needs.setup.outputs.key }}
+          path: /tmp/workspace-download
+      - name: "Extract workspace"
+        run: tar -xzf /tmp/workspace-download/workspace.tar.gz -C "$GITHUB_WORKSPACE"
+
+      - name: "Setup Node"
+        if: needs.setup.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '20' }}"
+      - name: "Setup Python"
+        if: needs.setup.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ needs.setup.outputs.python_version || '3.12' }}"
+      - name: "Setup Java"
+        if: needs.setup.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ needs.setup.outputs.java_version || '21' }}"
+      - name: "Setup Go"
+        if: needs.setup.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ needs.setup.outputs.go_version || '1.22' }}"
+      - name: "Setup .NET"
+        if: needs.setup.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ needs.setup.outputs.dotnet_version || '8.0' }}"
+
+      # 🔴 TRUST GATE, not first execution — see the single-job template's own long-form comment for the
+      #    full rationale (implementation/code-generation.md Step 11d). `has_e2e_tests` already proved
+      #    this story's own tests/e2e/<key>/ has content, so unlike the old `ci.playwright.enabled`
+      #    check this job's `if:` needs no second signal — startCommand/readinessUrl still come from
+      #    config.json because the DIRECTORY fact says the stage should run, not HOW to run it.
+      # 🔴 Playwright drives a REAL browser against a REAL running app — there is nothing to click or
+      #    assert on otherwise. `startCommand`/`readinessUrl` bring up whatever the frontend needs;
+      #    `backendStartCommand`/`backendReadinessUrl` are the SAME two facts for a genuinely SEPARATE
+      #    backend process, resolved the same way (never invented — common/ci-pipeline-generation.md
+      #    Section 3.0f) only when the local gate needed two independent processes rather than one
+      #    combined start script (a monolith, docker-compose, or a monorepo dev task already covers
+      #    both under a single `startCommand`, in which case the backend fields stay unset and this
+      #    step behaves exactly as it always did).
+      - name: "Stage 2: playwright e2e (headless, trust gate)"
+        id: playwright
+        run: |
+          mkdir -p tests/.evals/_run
+          start_cmd="$(jq -r '.playwright.startCommand // empty' tests/.evals/config.json)"
+          ready_url="$(jq -r '.playwright.readinessUrl // empty' tests/.evals/config.json)"
+          backend_start_cmd="$(jq -r '.playwright.backendStartCommand // empty' tests/.evals/config.json)"
+          backend_ready_url="$(jq -r '.playwright.backendReadinessUrl // empty' tests/.evals/config.json)"
+          test_cmd="$(jq -r '.playwright.testCommand // "npx playwright test tests/e2e/"' tests/.evals/config.json)"
+          if [ -z "$start_cmd" ] || [ -z "$ready_url" ]; then
+            echo "FAIL" > tests/.evals/_run/playwright.status
+            echo "::error::tests/e2e/${{ needs.setup.outputs.key }}/ has content but playwright.startCommand/readinessUrl are unresolved — this is a manifest defect, not an N/A."
+            exit 1
+          fi
+          if [ -n "$backend_start_cmd" ] && [ -z "$backend_ready_url" ]; then
+            echo "FAIL" > tests/.evals/_run/playwright.status
+            echo "::error::playwright.backendStartCommand is set but backendReadinessUrl is unresolved — this is a manifest defect, not an N/A."
+            exit 1
+          fi
+          npx playwright install --with-deps
+          backend_pid=""
+          # 🔴 Backend first, if a separate one is declared — the frontend's own requests during the
+          #    test run assume the API it calls is already reachable.
+          if [ -n "$backend_start_cmd" ]; then
+            eval "$backend_start_cmd" &
+            backend_pid=$!
+            npx --yes wait-on "$backend_ready_url" --timeout 60000
+          fi
+          eval "$start_cmd" &
+          server_pid=$!
+          npx --yes wait-on "$ready_url" --timeout 60000
+          trc=0
+          eval "$test_cmd --reporter=line,json:tests/.evals/_run/playwright-report.json" || trc=$?
+          kill "$server_pid" 2>/dev/null || true
+          wait "$server_pid" 2>/dev/null || true
+          if [ -n "$backend_pid" ]; then
+            kill "$backend_pid" 2>/dev/null || true
+            wait "$backend_pid" 2>/dev/null || true
+          fi
+          if [ "$trc" -eq 0 ]; then
+            echo "PASS" > tests/.evals/_run/playwright.status
+          else
+            echo "FAIL" > tests/.evals/_run/playwright.status
+          fi
+          exit "$trc"
+
+      - name: "Upload gate evidence"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-playwright
+          path: |
+            tests/.evals/_run/playwright.status
+            tests/.evals/_run/playwright-report.json
+          if-no-files-found: warn
+          retention-days: 1
+
+  # 🔴 No job-level `if:` (Section 1's table: "--") — J1/J2 score the diff's architecture/security and
+  #    do not depend on ci.roots[] at all, so they run regardless of manifest_resolved.
+  judge-gates:
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Download workspace"
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-${{ needs.setup.outputs.key }}
+          path: /tmp/workspace-download
+      - name: "Extract workspace"
+        run: tar -xzf /tmp/workspace-download/workspace.tar.gz -C "$GITHUB_WORKSPACE"
+
+      - name: "Setup Node"
+        if: needs.setup.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '20' }}"
+      - name: "Setup Python"
+        if: needs.setup.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ needs.setup.outputs.python_version || '3.12' }}"
+      - name: "Setup Java"
+        if: needs.setup.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ needs.setup.outputs.java_version || '21' }}"
+      - name: "Setup Go"
+        if: needs.setup.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ needs.setup.outputs.go_version || '1.22' }}"
+      - name: "Setup .NET"
+        if: needs.setup.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ needs.setup.outputs.dotnet_version || '8.0' }}"
+
+      # 🔴 run-evals.*'s OWN precondition check fails the judge gate outright if this is missing.
+      - name: "Install Claude Code CLI"
+        run: npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+
+      # 🔴 This job cannot see static-evals'/unit-coverage's/behavior-gherkin's/sonarqube's results —
+      #    they ran in separate, parallel jobs. run-evals.sh runs UNMODIFIED and still writes its own
+      #    complete-shaped eval.json, but every non-J1/J2 entry in THIS job's own copy reads ERROR
+      #    ("declared but never run") because those gates' local status files genuinely are not in this
+      #    job's workspace. That is expected and harmless: `merge-verdict.sh` (the `verdict` job) takes
+      #    ONLY the J1_architecture/J2_security entries from this job's eval.json and discards the rest
+      #    — the real values for every other gate id come from that gate's OWN uploaded artifact
+      #    (CI-SPLIT-JOBS-PLAN.md Section 3).
+      # 🔴 continue-on-error: true is REQUIRED here, not optional — run-evals.sh runs UNMODIFIED
+      #    (Section 3's own "auto-fix-agent.sh needs zero changes" contract) and still computes ITS
+      #    OWN internal verdict/exit-code by iterating ALL of ci.gates, exactly as it did in the
+      #    single-job pipeline. In THIS job it can only ever see J1_architecture/J2_security's real
+      #    results — every other gate (D1-D7, unitCoverage, behavior*, sonarqube) has no local file
+      #    here and is unconditionally marked ERROR "declared but never run" in this job's OWN private
+      #    eval.json copy. That drags this step's exit code to non-zero on EVERY run, structurally,
+      #    regardless of what J1/J2 actually scored. Without continue-on-error, needs.judge-gates.result
+      #    would be "failure" on every single PR forever — including fully passing ones — which
+      #    permanently poisons merge-verdict.sh's failed-gates.txt tally (`"judge:${JUDGE_RESULT}"`
+      #    adds "judge" whenever the RESULT is failure, independent of J1/J2's real status) and fires
+      #    self-repair on every run chasing a gate that never actually failed. The REAL J1/J2 verdict is
+      #    still fully enforced — merge-verdict.sh extracts ONLY the J1_architecture/J2_security entries
+      #    from this job's own eval.json (discarding the rest) and correctly fails the pipeline if
+      #    either one genuinely scored below its threshold; continue-on-error only stops this job's
+      #    OWN structurally-blind exit code from masquerading as that real verdict.
+      - name: "Stage 3: judge gates J1 + J2"
+        id: judge
+        continue-on-error: true
+        env:
+          EVAL_KEY: "${{ needs.setup.outputs.key }}"
+          CLAUDE_CODE_OAUTH_TOKEN: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+          ANTHROPIC_API_KEY: "${{ secrets.ANTHROPIC_API_KEY }}"
+        run: bash tests/.evals/scripts/run-evals.sh "${{ needs.setup.outputs.base_sha }}"
+
+      - name: "Upload gate evidence"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-judge
+          path: reports/eval-evidence/${{ needs.setup.outputs.key }}/
+          if-no-files-found: warn
+          retention-days: 1
+
+  # 🔴 needs: unit-coverage (added to Section 1's original "needs: setup" alone) + if: always() —
+  #    sonarqube needs unit-coverage's OWN coverage report artifact (see "Download coverage reports"
+  #    below); GitHub does not wait for an unrelated parallel job's artifact to exist, so this job
+  #    must genuinely depend on it. if: always() is required BECAUSE of that new dependency: a job
+  #    with needs: [X] is skipped by default whenever X itself is skipped, and sonarqube must stay
+  #    unconditional (Section 1's own table) even when unit-coverage's `if: has_unit_tests` is unmet.
+  sonarqube:
+    needs: [setup, unit-coverage]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Download workspace"
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace-${{ needs.setup.outputs.key }}
+          path: /tmp/workspace-download
+      - name: "Extract workspace"
+        run: tar -xzf /tmp/workspace-download/workspace.tar.gz -C "$GITHUB_WORKSPACE"
+
+      # 🔴 CROSS-JOB COVERAGE HANDOFF — see unit-coverage's own "Collect coverage reports" comment for
+      #    the full production failure this fixes. "Read manifest" here is ONLY to rebuild
+      #    tests/.evals/_run/merged-manifest.json (a scratch file, never packaged in the tarball) so
+      #    this job can re-derive each root's own coverageReportPath — its has_<stack> outputs are
+      #    unused here, `setup`'s own copy already gated the 5 actions/setup-* blocks above.
+      - name: "Read manifest"
+        run: bash tests/.evals/scripts/read-manifest.sh > /dev/null
+
+      - name: "Download coverage reports"
+        id: covdownload
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-reports-${{ needs.setup.outputs.key }}
+          path: /tmp/coverage-download
+
+      - name: "Restore coverage reports"
+        if: steps.covdownload.outcome == 'success'
+        run: |
+          if [ -f tests/.evals/_run/merged-manifest.json ]; then
+            while IFS=$'\t' read -r root report_path; do
+              [ -z "$root" ] && continue
+              [ -z "$report_path" ] && continue
+              tag="$(printf '%s' "$root" | tr '/' '_')"
+              src="/tmp/coverage-download/${tag}__$(basename "$report_path")"
+              if [ -f "$src" ]; then
+                dest="${root}/${report_path}"
+                mkdir -p "$(dirname "$dest")"
+                cp "$src" "$dest"
+                echo "restored coverage report for root '${root}' at ${report_path}"
+              fi
+            done < <(jq -r '.[] | select(.coverageReportPath) | [.root, .coverageReportPath] | @tsv' tests/.evals/_run/merged-manifest.json | tr -d '\r')
+          fi
+
+      - name: "Setup Node"
+        if: needs.setup.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '20' }}"
+      - name: "Setup Python"
+        if: needs.setup.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ needs.setup.outputs.python_version || '3.12' }}"
+      - name: "Setup Java"
+        if: needs.setup.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ needs.setup.outputs.java_version || '21' }}"
+      - name: "Setup Go"
+        if: needs.setup.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ needs.setup.outputs.go_version || '1.22' }}"
+      - name: "Setup .NET"
+        if: needs.setup.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ needs.setup.outputs.dotnet_version || '8.0' }}"
+
+      # 🔴 SONAR SCOPE IS RESOLVED AT RUN TIME — never baked from a PLANNED code root. See the single-job
+      #    template's own long-form comment (git history) for the full observed-failure rationale.
+      - name: "Resolve Sonar scope"
+        id: sonarscope
+        if: always()
+        run: |
+          props="sonar-project.properties"
+          if [ ! -f "$props" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::SonarQube skipped - no sonar-project.properties in this repo."
+            exit 0
+          fi
+          cands=""
+          if [ -f tests/.evals/_run/merged-manifest.json ] && command -v jq >/dev/null 2>&1; then
+            cands="$(jq -r '[.[].sourcePaths[]?] | unique[]' tests/.evals/_run/merged-manifest.json 2>/dev/null | tr -d '\r')"
+          fi
+          if [ -z "$cands" ]; then
+            cands="$(grep '^sonar.sources=' "$props" 2>/dev/null | cut -d= -f2- | tr ',' '\n' | tr -d '\r')"
+          fi
+          existing=""
+          for c in $cands; do
+            [ -n "$c" ] && [ -e "$c" ] && existing="${existing}${existing:+,}${c}"
+          done
+          if [ -z "$existing" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::SonarQube skipped - none of the configured source paths exist in this checkout yet."
+            exit 0
+          fi
+          tcands="$(grep '^sonar.tests=' "$props" 2>/dev/null | cut -d= -f2- | tr ',' '\n' | tr -d '\r')"
+          texisting=""
+          for c in $tcands; do
+            [ -n "$c" ] && [ -e "$c" ] && texisting="${texisting}${texisting:+,}${c}"
+          done
+          tmp="$(mktemp)"
+          grep -v '^sonar.sources=' "$props" | grep -v '^sonar.tests=' > "$tmp"
+          echo "sonar.sources=${existing}" >> "$tmp"
+          [ -n "$texisting" ] && echo "sonar.tests=${texisting}" >> "$tmp"
+          mv "$tmp" "$props"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "Sonar scope resolved - sources: ${existing}${texisting:+ | tests: ${texisting}}"
+
+${SONAR_STEPS}
+
+      - name: "Record SonarQube gate status"
+        id: sonarstatus
+        if: always()
+        env:
+          SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}"
+        run: |
+          mkdir -p tests/.evals/_run
+          outcome="${{ steps.sonarqg.outcome }}"
+          if [ -z "$outcome" ]; then
+            echo "N/A" > tests/.evals/_run/sonarqube.status
+          elif [ "$outcome" = "success" ]; then
+            echo "PASS" > tests/.evals/_run/sonarqube.status
+          else
+            echo "FAIL" > tests/.evals/_run/sonarqube.status
+            : > tests/.evals/_run/sonar-conditions.txt
+            REPORT_TASK=".scannerwork/report-task.txt"
+            if [ -f "$REPORT_TASK" ] && command -v jq >/dev/null 2>&1; then
+              CE_TASK_URL="$(grep '^ceTaskUrl=' "$REPORT_TASK" | cut -d= -f2-)" || true
+              if [ -n "$CE_TASK_URL" ]; then
+                ANALYSIS_ID="$(curl -sf -u "${SONAR_TOKEN}:" "$CE_TASK_URL" 2>/dev/null | jq -r '.task.analysisId // empty')" || true
+                if [ -n "$ANALYSIS_ID" ]; then
+                  SERVER_URL="$(grep '^serverUrl=' "$REPORT_TASK" | cut -d= -f2-)" || true
+                  curl -sf -u "${SONAR_TOKEN}:" "${SERVER_URL}/api/qualitygates/project_status?analysisId=${ANALYSIS_ID}" 2>/dev/null \
+                    | jq -r '.projectStatus.conditions[]? | select(.status=="ERROR") | "\(.metricKey) actual=\(.actualValue) threshold=\(.errorThreshold) comparator=\(.comparator)"' \
+                    > tests/.evals/_run/sonar-conditions.txt || true
+                fi
+              fi
+            fi
+          fi
+
+      - name: "Upload gate evidence"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-sonar
+          path: |
+            tests/.evals/_run/sonarqube.status
+            tests/.evals/_run/sonar-conditions.txt
+          if-no-files-found: warn
+          retention-days: 1
+
+  verdict:
+    needs: [setup, static-evals, unit-coverage, behavior-gherkin, playwright-e2e, judge-gates, sonarqube]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Checkout (full history for delta diffs)"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Download gate evidence"
+        uses: actions/download-artifact@v4
+        with:
+          pattern: gate-*
+          path: tests/.evals/_run/downloaded
+          merge-multiple: false
+
+      # ── ONE step that FAILS the job — every gate step upstream ran in its own job with its own
+      #    isolation; this is where the seven aggregate outcomes are decided ONCE (Section 4.0c,
+      #    reframed at job level: `needs.<job>.result` instead of `steps.<id>.outcome`). ──
+      - name: "Verdict"
+        id: verdict
+        if: always()
+        env:
+          EVAL_KEY: "${{ needs.setup.outputs.key }}"
+          STATIC_RESULT: "${{ needs.static-evals.result }}"
+          UNIT_RESULT: "${{ needs.unit-coverage.result }}"
+          BEHAVIOR_RESULT: "${{ needs.behavior-gherkin.result }}"
+          PLAYWRIGHT_RESULT: "${{ needs.playwright-e2e.result }}"
+          JUDGE_RESULT: "${{ needs.judge-gates.result }}"
+          SONAR_RESULT: "${{ needs.sonarqube.result }}"
+        run: bash tests/.evals/scripts/merge-verdict.sh
+
+      - name: "Stage 4: publish scorecard"
+        if: always()
+        env:
+          EVAL_KEY: "${{ needs.setup.outputs.key }}"
+        run: |
+          SUMMARY="reports/eval-evidence/${EVAL_KEY}/eval-summary.md"
+          if [ -f "$SUMMARY" ]; then
+            cat "$SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::No eval-summary.md at $SUMMARY — merge-verdict.sh did not produce one."
+          fi
+
+      # 🔴 sonar-conditions.txt MUST be in this list. merge-verdict.sh already copies the sonarqube
+      #    job's own conditions file to this exact path (tests/.evals/_run/sonar-conditions.txt) so
+      #    auto-fix-agent.sh's sonar triage (Section 6.4) can tell a REAL quality-gate finding apart
+      #    from an infra failure — but that file never reaches self-repair at all unless it is ALSO
+      #    listed here. Without it, self-repair always finds no conditions file, always concludes
+      #    "infrastructure, not a code defect" regardless of what actually happened, and gives up with
+      #    a misleading message even on a genuine, fixable Sonar finding. Harmless in the sense that it
+      #    still stops rather than fabricating a pass, but the diagnosis is wrong every single time.
+      - name: "Upload eval artifacts"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: |
+            tests/.evals/_run/failed-gates.txt
+            tests/.evals/_run/sonar-conditions.txt
+            reports/eval-evidence/
+          if-no-files-found: warn
+
+  self-repair:
+    needs: verdict
+    if: |
+      failure() &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: "Checkout PR head"
+        uses: actions/checkout@v4
+        with:
+          ref: "${{ github.event.pull_request.head.ref }}"
+          fetch-depth: 0
+
+      - name: "Download eval artifacts"
+        uses: actions/download-artifact@v4
+        with:
+          name: eval-results
+
+      # ── Same EVAL_KEY resolution as `setup` — auto-fix-agent.sh resolves its evidence by this EXACT
+      #    key, never by searching (V31, Section 4.0e). ──
+      - name: "Resolve EVAL_KEY"
+        id: evalkey
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: bash tests/.evals/scripts/resolve-eval-key.sh "$HEAD_REF" "$REF_NAME"
+
+      - name: "Resolve base SHA"
+        id: basesha
+        run: echo "sha=$(git merge-base "${{ github.event.pull_request.base.sha }}" HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: "Read manifest"
+        id: readmanifest
+        run: bash tests/.evals/scripts/read-manifest.sh >> "$GITHUB_OUTPUT"
+
+      - name: "Setup Node"
+        if: steps.readmanifest.outputs.has_node == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ steps.readmanifest.outputs.node_version || '20' }}"
+
+      - name: "Setup Python"
+        if: steps.readmanifest.outputs.has_python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ steps.readmanifest.outputs.python_version || '3.12' }}"
+
+      - name: "Setup Java"
+        if: steps.readmanifest.outputs.has_java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "${{ steps.readmanifest.outputs.java_version || '21' }}"
+
+      - name: "Setup Go"
+        if: steps.readmanifest.outputs.has_go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version: "${{ steps.readmanifest.outputs.go_version || '1.22' }}"
+
+      - name: "Setup .NET"
+        if: steps.readmanifest.outputs.has_dotnet == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "${{ steps.readmanifest.outputs.dotnet_version || '8.0' }}"
+
+      - name: "Setup other toolchains"
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh toolchain "${{ steps.basesha.outputs.sha }}"
+
+      - name: "Install dependencies"
+        id: install
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh install "${{ steps.basesha.outputs.sha }}"
+
+      - name: "Compile / build"
+        id: build
+        run: bash tests/.evals/scripts/ci-manifest-runner.sh build "${{ steps.basesha.outputs.sha }}"
+
+      - name: "Install Claude Code CLI"
+        run: npm install -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}
+
+      - name: "Autonomous self-repair"
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}"
+          BASE_SHA: "${{ steps.basesha.outputs.sha }}"
+          EVAL_KEY: "${{ steps.evalkey.outputs.key }}"
+        run: bash tests/.evals/scripts/auto-fix-agent.sh

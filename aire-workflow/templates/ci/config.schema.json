@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://aire/templates/ci/config.schema.json",
+  "title": "AIRE tests/.evals/config.json",
+  "description": "Schema for the eval-framework manifest (common/eval-framework.md Section 1). Validated by V37 in validate-pipeline.{sh,ps1} before a generated pipeline is committed. A LEGACY flat manifest (no roots[], installCommands/coverageCommand/sourcePaths/testPaths as top-level ci keys) is grandfathered by common/eval-framework.md Section 1.1 and is NOT required to pass the roots[] sub-schema below — V37 detects that shape (ci.roots absent) and skips the roots[]-specific rules for it, never failing a pre-existing legacy file.",
+  "type": "object",
+  "required": ["evalFrameworkVersion", "thresholds", "ci"],
+  "properties": {
+    "evalFrameworkVersion": { "type": "string" },
+    "scope": { "type": "string" },
+    "retryLimitForSelfRepair": { "type": "integer", "minimum": 1 },
+    "thresholds": {
+      "type": "object",
+      "description": "The single source for every number a gate enforces (eval-framework.md Section 1). unitTestCoverageMin/disallowedLicenses/maxCyclomaticComplexity are the three V37 cross-references against D5/D6 in ci.gates (Section 4 item 4 of CI-SPLIT-JOBS-PLAN.md).",
+      "required": ["unitTestCoverageMin", "disallowedLicenses", "maxCyclomaticComplexity"],
+      "properties": {
+        "lintErrorsAllowedDelta": { "type": "integer", "minimum": 0 },
+        "typeErrorsAllowed": { "type": "integer", "minimum": 0 },
+        "semgrepFindingsAllowed": { "type": "object" },
+        "dependencyVulnerabilitiesAllowed": { "type": "object" },
+        "disallowedLicenses": { "type": "array", "items": { "type": "string" } },
+        "maxCyclomaticComplexity": { "type": "number", "minimum": 1 },
+        "secretFindingsAllowed": { "type": "integer", "minimum": 0 },
+        "unitTestCoverageMin": { "type": "number", "minimum": 0, "maximum": 100 },
+        "behaviorScenarioPassRateMin": { "type": "number", "minimum": 0, "maximum": 100 },
+        "llmJudgeArchitectureScoreMin": { "type": "number", "minimum": 0, "maximum": 1 },
+        "llmJudgeSecurityScoreMin": { "type": "number", "minimum": 0, "maximum": 1 },
+        "securityVulnerabilitiesAllowed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "properties": {
+        "containerRuntime": { "type": "string" },
+        "image": { "type": "string" },
+        "containerfile": { "type": "string" },
+        "entrypoint": { "type": "string" }
+      }
+    },
+    "sonarqube": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": { "enabled": { "type": "boolean" } }
+    },
+    "playwright": {
+      "type": "object",
+      "required": ["enabled"],
+      "description": "job-level if: for the playwright-e2e job (CI-SPLIT-JOBS-PLAN.md Section 1) is has_e2e_tests, a directory fact detect-stage-scopes.sh computes — never this enabled flag. enabled/startCommand/readinessUrl/testCommand remain the facts the local gate and CI's own trust-gate step read to know HOW to run Playwright once the directory fact says it SHOULD run. backendStartCommand/backendReadinessUrl are the SAME two facts for a genuinely separate backend process — resolved only when the app is not started by one combined command (a monolith, docker-compose, or a monorepo dev task already covers both under startCommand alone, in which case these stay null).",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "startCommand": { "type": ["string", "null"] },
+        "readinessUrl": { "type": ["string", "null"] },
+        "testCommand": { "type": ["string", "null"] },
+        "backendStartCommand": { "type": ["string", "null"] },
+        "backendReadinessUrl": { "type": ["string", "null"] }
+      },
+      "allOf": [
+        {
+          "description": "backendReadinessUrl is required whenever backendStartCommand is set — an unresolved readiness URL for a real backend process is a manifest defect, never left implicit.",
+          "if": { "properties": { "backendStartCommand": { "not": { "type": "null" } } }, "required": ["backendStartCommand"] },
+          "then": { "properties": { "backendReadinessUrl": { "not": { "type": "null" } } } }
+        }
+      ]
+    },
+    "judge": {
+      "type": "object",
+      "properties": {
+        "model": { "type": "string" },
+        "rubricVersion": {
+          "type": "string",
+          "description": "V37 cross-field rule: MUST equal architecture.md's own version — the same rule tests/.evals/rubrics/architecture-rubric.json's rubricVersion is checked against."
+        }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "required": ["baseBranch", "integrationBranchPrefixes", "manifestState", "roots", "gates"],
+      "properties": {
+        "baseBranch": { "type": "string", "minLength": 1 },
+        "integrationBranchPrefixes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "manifestState": { "type": "string", "enum": ["resolved", "unresolved"] },
+        "gates": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "roots": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/root" }
+        }
+      },
+      "allOf": [
+        {
+          "description": "V30's own rule, restated in schema form: an unresolved manifest must carry an empty roots[].",
+          "if": { "properties": { "manifestState": { "const": "unresolved" } } },
+          "then": { "properties": { "roots": { "maxItems": 0 } } }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "root": {
+      "type": "object",
+      "required": ["root", "stack", "markerFile", "installCommands"],
+      "properties": {
+        "root": { "type": "string", "minLength": 1 },
+        "stack": { "type": "string", "minLength": 1 },
+        "runtimeVersion": { "type": "string" },
+        "markerFile": { "type": "string", "minLength": 1 },
+        "installCommands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "buildCommand": { "type": ["string", "null"] },
+        "coverageCommand": { "type": ["string", "null"] },
+        "coverageReportPath": { "type": ["string", "null"] },
+        "coverageFormat": {
+          "type": ["string", "null"],
+          "enum": ["cobertura", "lcov", "jacoco", "gocover", null]
+        },
+        "noTestsExitCode": { "type": ["integer", "null"] },
+        "dependsOn": { "type": "array", "items": { "type": "string" } },
+        "toolchainSetup": { "type": "array", "items": { "type": "string" } },
+        "sourcePaths": { "type": "array", "items": { "type": "string" } },
+        "testPaths": { "type": "array", "items": { "type": "string" } },
+        "tools": { "type": "array", "items": { "type": "string" } },
+        "toolInstallCommands": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "V37 cross-field rule: every entry in tools[] must have a matching key here, and vice versa (CI-SPLIT-JOBS-PLAN.md Section 4, cross-referencing 4.0i.1 P1's declaration-completeness rule)."
+        }
+      }
+    }
+  }
+}
