@@ -3,7 +3,7 @@
 ## Project Information
 - **Project Type**: Brownfield
 - **Start Date**: 2026-10-14T10:32:49Z
-- **Current Stage**: PLANNING - Requirements Analysis (awaiting approval)
+- **Current Stage**: PLANNING - Workflow Planning
 - **AIRE Version**: 1.0
 
 ## Workspace State
@@ -55,4 +55,38 @@
 ### PLANNING PHASE
 - [x] Workspace Detection
 - [x] Reverse Engineering (skipped - Atlas deep dive pulled verbatim, doc 6025 v26)
-- [x] Requirements Analysis (requirements.md written; awaiting approval)
+- [x] Requirements Analysis (approved 2026-10-14T10:43:14Z)
+- [ ] User Stories (GATE 1 approved 2026-10-14T10:50:08Z; stories local, Tracker ID LOCAL)
+- [x] Dependency Graph (auto-generated 2026-10-14T10:50:08Z)
+- [ ] Workflow Planning
+
+## User Stories Settings
+- team_size: 2
+- story_creation_mode: all-at-once
+- target_story_count: 5
+
+## Story Tracker
+| Story | Title | Requires | Tracker ID | Status | PR | Merged | Start | End | Recorded |
+|-------|-------|----------|------------|--------|----|--------|-------|-----|----------|
+| 1.1 | Backend prorated upgrade to Premium | none | LOCAL | Ready for Development | — | — | | | 2026-10-14T10:50:08Z |
+| 1.2 | Upgrade request rejection paths | 1.1 | LOCAL | Ready for Development | — | — | | | 2026-10-14T10:50:08Z |
+| 1.3 | Upgrade button for Standard users | none | LOCAL | Ready for Development | — | — | | | 2026-10-14T10:50:08Z |
+| 1.4 | Upgrade confirmation modal with prorated preview | 1.3 | LOCAL | Ready for Development | — | — | | | 2026-10-14T10:50:08Z |
+| 1.5 | Confirm upgrade and refresh Billing page | 1.1, 1.4 | LOCAL | Ready for Development | — | — | | | 2026-10-14T10:50:08Z |
+
+## Dependency Graph
+```mermaid
+graph TD
+    S11["1.1 Backend prorated upgrade"]
+    S12["1.2 Rejection paths"]
+    S13["1.3 Upgrade button"]
+    S14["1.4 Confirmation modal"]
+    S15["1.5 Confirm and refresh"]
+    S11 --> S12
+    S11 --> S15
+    S13 --> S14
+    S14 --> S15
+```
+- Immediately startable: 1.1, 1.3 (independent lanes: backend and UI)
+- Blocked: 1.2 (by 1.1), 1.4 (by 1.3), 1.5 (by 1.1 and 1.4)
+- Shared files: src/backend/main.py (1.1, 1.2); src/frontend/src/pages/Billing.jsx and src/frontend/src/App.css (1.3, 1.4, 1.5)

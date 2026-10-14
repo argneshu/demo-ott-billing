@@ -1,0 +1,35 @@
+version: 1
+generated_at: 2026-10-14
+team_size: 2
+
+shared_files:
+  - src/backend/main.py
+  - src/frontend/src/pages/Billing.jsx
+  - src/frontend/src/App.css
+
+stories:
+  - id: "1.1"
+    title: Backend prorated upgrade to Premium
+    tracker_id: LOCAL
+    requires: []
+    enables: ["1.2", "1.5"]
+  - id: "1.2"
+    title: Upgrade request rejection paths
+    tracker_id: LOCAL
+    requires: ["1.1"]
+    enables: []
+  - id: "1.3"
+    title: Upgrade button for Standard users
+    tracker_id: LOCAL
+    requires: []
+    enables: ["1.4"]
+  - id: "1.4"
+    title: Upgrade confirmation modal with prorated preview
+    tracker_id: LOCAL
+    requires: ["1.3"]
+    enables: ["1.5"]
+  - id: "1.5"
+    title: Confirm upgrade and refresh Billing page
+    tracker_id: LOCAL
+    requires: ["1.1", "1.4"]
+    enables: []
