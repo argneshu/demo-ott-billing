@@ -109,3 +109,21 @@
 **AIRE VERSION**: 1.0
 
 ---
+## Functional Design - Answers
+**Timestamp**: 2026-10-14T10:53:18Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: " use recommended for A on both."
+**AI Response**: Recorded Q1 A (server local date for the backend, browser local date for the preview; success message uses the specified text only) and Q2 A (no charged amount in the success message). Wrote spec/plans/functional-design.md and presented the approval prompt.
+**Context**: Functional Design Steps 5-7
+**AIRE VERSION**: 1.0
+
+---
+## Functional Design - Approval
+**Timestamp**: 2026-10-14T10:54:38Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "Continue to Next Stage"
+**AI Response**: Functional Design approved. Started NFR Requirements; wrote nfr-requirements-generation.md with 3 questions (frontend test runner, test locations, coverage threshold).
+**Context**: Functional Design Step 9, NFR Requirements Steps 1-4
+**AIRE VERSION**: 1.0
+
+---

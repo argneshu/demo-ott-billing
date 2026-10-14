@@ -6,8 +6,8 @@ Inputs: epic-brief.md, requirements.md, stories.md, atlas-deep-dive.md.
 ## Checklist
 - [x] Analyze system context
 - [x] Draft questions (below)
-- [ ] Collect answers
-- [ ] Write `spec/plans/functional-design.md` (business logic, rules, frontend components, Testable Properties)
+- [x] Collect answers (user: "use recommended for A on both.")
+- [x] Write `spec/plans/functional-design.md` (business logic, rules, frontend components, Testable Properties)
 - [ ] Present completion message and wait for approval
 
 ## Question 1: Date used for "today"
@@ -19,7 +19,7 @@ B) Make both use UTC dates
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 2: Charged amount after confirming
 The epic's success message ("You're now on Premium! Your next full cycle bills at $40/month.") has no amount, but the response carries `prorated_charge`. Should the page show the amount that was actually charged?
@@ -30,4 +30,4 @@ B) Yes, append "You were charged $X.XX today." using the backend `prorated_charg
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A

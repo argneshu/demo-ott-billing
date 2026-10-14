@@ -3,7 +3,7 @@
 ## Project Information
 - **Project Type**: Brownfield
 - **Start Date**: 2026-10-14T10:32:49Z
-- **Current Stage**: IMPLEMENTATION - Functional Design (awaiting answers)
+- **Current Stage**: IMPLEMENTATION - NFR Requirements (awaiting answers)
 - **AIRE Version**: 1.0
 
 ## Workspace State
@@ -61,8 +61,8 @@
 - [x] Workflow Planning (auto-announced 2026-10-14T10:50:55Z)
 - [ ] Application Design - SKIP
 ### IMPLEMENTATION PHASE
-- [ ] Functional Design - EXECUTE (questions pending)
-- [ ] NFR Requirements - EXECUTE (minimal)
+- [x] Functional Design (approved 2026-10-14T10:54:38Z)
+- [ ] NFR Requirements - EXECUTE (minimal; questions pending)
 - [ ] NFR Design - SKIP
 - [ ] Infrastructure Design - SKIP
 - [ ] Behaviour Specs & Test Plans - EXECUTE (ALWAYS)
