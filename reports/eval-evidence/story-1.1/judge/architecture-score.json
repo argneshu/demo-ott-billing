@@ -1,0 +1,55 @@
+{
+  "key": "story-1.1",
+  "judgeModel": "claude-sonnet-5-5",
+  "rubric": "tests/.evals/rubrics/architecture-rubric.json",
+  "rubricVersion": "1.0.0",
+  "scoredOnce": true,
+  "criteria": [
+    {
+      "id": "ARCH-01",
+      "weight": 0.25,
+      "score": 1.0,
+      "status": "scored",
+      "evidence": "upgrade_plan checks user and plan (src/backend/main.py:234-237) and computes the charge (239-241) before any write (243-245)"
+    },
+    {
+      "id": "ARCH-02",
+      "weight": 0.2,
+      "score": 1.0,
+      "status": "scored",
+      "evidence": "calculate_days_remaining(renew_at, today=None) at main.py:99 and prorate at :109 are separate functions; the formula is not inline in the handler"
+    },
+    {
+      "id": "ARCH-03",
+      "weight": 0.15,
+      "score": 1.0,
+      "status": "scored",
+      "evidence": "premium_billing_profile builds fresh dicts and lists per call (main.py:115)"
+    },
+    {
+      "id": "ARCH-04",
+      "weight": 0.1,
+      "score": 1.0,
+      "status": "scored",
+      "evidence": "renew_at is only read (main.py:239) and carried into the profile"
+    },
+    {
+      "id": "ARCH-05",
+      "weight": 0.15,
+      "score": 1.0,
+      "status": "scored",
+      "evidence": "response is built from the profile, not the user record (main.py:246); no log calls added"
+    },
+    {
+      "id": "ARCH-06",
+      "weight": 0.15,
+      "score": null,
+      "status": "N/A",
+      "evidence": "no frontend code in this diff"
+    }
+  ],
+  "renormalisedWeightTotal": 0.85,
+  "score": 1.0,
+  "min": 0.85,
+  "status": "PASS"
+}

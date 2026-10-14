@@ -1,0 +1,69 @@
+{
+  "key": "story-1.1",
+  "judgeModel": "claude-sonnet-5-5",
+  "rubric": "tests/.evals/rubrics/security-rubric.json",
+  "rubricVersion": "1.0.0",
+  "scoredOnce": true,
+  "criteria": [
+    {
+      "id": "SEC-01",
+      "owasp": "A01:2025",
+      "weight": 0.2,
+      "score": 1.0,
+      "evidence": "only the documented, user-accepted deviation REQ-NF-01 applies (POST /api/billing/upgrade, main.py:231-245); excluded by the criterion, reported separately by the security review"
+    },
+    {
+      "id": "SEC-02",
+      "owasp": "A02:2025",
+      "weight": 0.1,
+      "score": 1.0,
+      "evidence": "diff changes no CORS, header or mode setting"
+    },
+    {
+      "id": "SEC-03",
+      "owasp": "A03:2025",
+      "weight": 0.1,
+      "score": 1.0,
+      "evidence": "no runtime dependency added; requirements-dev.txt pins exact versions"
+    },
+    {
+      "id": "SEC-04",
+      "owasp": "A05:2025",
+      "weight": 0.15,
+      "score": 1.0,
+      "evidence": "request body bound to UpgradeRequest (main.py:85); no eval, HTML or query building"
+    },
+    {
+      "id": "SEC-05",
+      "owasp": "A06:2025",
+      "weight": 0.15,
+      "score": 1.0,
+      "evidence": "charge and plan computed server-side; eligibility checked before mutation; second upgrade refused (main.py:234-245)"
+    },
+    {
+      "id": "SEC-06",
+      "owasp": "A07:2025",
+      "weight": 0.1,
+      "score": 1.0,
+      "evidence": "no password or token returned or logged; login and register untouched"
+    },
+    {
+      "id": "SEC-07",
+      "owasp": "A09:2025",
+      "weight": 0.1,
+      "score": 0.0,
+      "evidence": "the application has no unhandled-exception handler or logging for the new endpoint (src/backend/main.py:231-246); the handler is Story 1.2 AC-4",
+      "citation": "src/backend/main.py:231"
+    },
+    {
+      "id": "SEC-08",
+      "owasp": "A10:2025",
+      "weight": 0.1,
+      "score": 1.0,
+      "evidence": "no stack trace or internal detail in any error body; state is mutated only after checks (main.py:243-245)"
+    }
+  ],
+  "score": 0.9,
+  "min": 0.85,
+  "status": "PASS"
+}

@@ -1,0 +1,3 @@
+# Bootstrap (AIRE eval-framework 2.3): gitleaks default ruleset.
+[extend]
+useDefault = true

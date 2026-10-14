@@ -1,0 +1,18 @@
+TEST PLACEMENT CHECK - story-1.1 - base 9eb1a1f4c7dd4823f495e0b8f8591e6b934fa369 - rules: unit tests under tests/unit/<mirror-of-src>/, API tests under tests/api/, behaviour tests and steps under tests/behavior/, nothing test-like under src/
+src/backend/.gitignore -> application or config (not a test) -> OK
+src/backend/main.py -> application or config (not a test) -> OK
+src/backend/mypy.ini -> application or config (not a test) -> OK
+src/backend/requirements-dev.txt -> application or config (not a test) -> OK
+src/backend/ruff.toml -> application or config (not a test) -> OK
+tests/.evals/behavior/Containerfile -> support/tooling -> OK
+tests/.evals/behavior/report.py -> support/tooling -> OK
+tests/.evals/behavior/run.sh -> support/tooling -> OK
+tests/.evals/scripts/changed-lines-coverage.py -> support/tooling -> OK
+tests/api/test_upgrade_contract.py -> api-test -> tests/api -> OK
+tests/behavior/steps/billing_steps.py -> behaviour -> tests/behavior -> OK
+tests/behavior/test_story_1_1.py -> behaviour -> tests/behavior -> OK
+tests/conftest.py -> support/tooling -> OK
+tests/unit/backend/test_main_upgrade.py -> unit-test -> tests/unit/backend (mirrors src/backend) -> OK
+tests/unit/backend/test_proration_properties.py -> unit-test -> tests/unit/backend (mirrors src/backend) -> OK
+violations found: 0
+VERDICT: PASS
