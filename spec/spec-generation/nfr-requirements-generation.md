@@ -5,8 +5,8 @@ Depth: minimal. Scalability, availability and performance are N/A for an in-memo
 ## Checklist
 - [x] Analyze functional design
 - [x] Draft questions (below)
-- [ ] Collect answers
-- [ ] Write `spec/plans/nfr.md` (`## NFR Requirements`)
+- [x] Collect answers (Q1 A, Q2 A, Q3 A)
+- [x] Write `spec/plans/nfr.md` (`## NFR Requirements`)
 - [ ] Present completion message and wait for approval
 
 ## Question 1: Frontend unit-test runner
@@ -18,7 +18,7 @@ B) Node's built-in `node --test` with no new packages (helpers kept in a plain `
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 2: Test locations and Playwright scope
 Backend tests go in `tests/unit/` (pytest, Hypothesis, httpx for TestClient), Playwright in `tests/e2e/<story-slug>/`, with Playwright as a dev dependency at the repo root `package.json`, not in `src/frontend`. E2E runs Chromium only against the Vite dev server and a locally started backend.
@@ -29,7 +29,7 @@ B) Put Playwright under `src/frontend` (devDependency of the frontend package)
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A
 
 ## Question 3: Unit-test coverage threshold
 The eval framework default `unitTestCoverageMin` is 90.0, applied to the changed files only.
@@ -40,4 +40,4 @@ B) Lower it for this POC (give the value after the tag)
 
 X) Other (please describe after [Answer]: tag below)
 
-[Answer]: 
+[Answer]: A

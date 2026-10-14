@@ -1,0 +1,51 @@
+{
+  "rubricName": "Architectural Alignment - demo-ott-billing",
+  "rubricVersion": "1.0.0",
+  "derivedFrom": [
+    "spec/plans/architecture.md#10-verifiable-constraints"
+  ],
+  "evalCriteria": [
+    {
+      "id": "ARCH-01",
+      "metric": "Validate, then mutate",
+      "weight": 0.25,
+      "prompt": "In the changed upgrade handler, no assignment to `users[...]` or `billing_data[...]` appears before the checks that can raise and before the proration is computed. Score 0 if any write precedes a check or calculation that can fail.",
+      "source": "spec/plans/functional-design.md (BR-5)"
+    },
+    {
+      "id": "ARCH-02",
+      "metric": "Proration in separate pure functions",
+      "weight": 0.2,
+      "prompt": "The formula `(40 - 20) * days / 30` (or equivalent constants) must not appear inline inside a route handler or a JSX component body, and the day calculation must not call the current date internally without an injectable parameter. Score 0 on either.",
+      "source": "spec/plans/functional-design.md (Sections 2 and 4), spec/plans/nfr.md (Maintainability)"
+    },
+    {
+      "id": "ARCH-03",
+      "metric": "No shared mutable Premium payload",
+      "weight": 0.15,
+      "prompt": "A module-level Premium dict or list must not be assigned directly into `billing_data[...]`; it must be built by a factory or deep-copied. Score 0 if one object can be referenced by two users.",
+      "source": "spec/plans/functional-design.md (Section 1, BR-7)"
+    },
+    {
+      "id": "ARCH-04",
+      "metric": "Renewal date is read-only",
+      "weight": 0.1,
+      "prompt": "No assignment to `renew_at` (backend dict key or frontend state) in the changed upgrade code other than carrying the value from the existing record or the server response. Score 0 on any write or recomputation.",
+      "source": "spec/plans/functional-design.md (BR-4), spec/plans/requirements.md (REQ-F-09)"
+    },
+    {
+      "id": "ARCH-05",
+      "metric": "No secrets in responses or logs",
+      "weight": 0.15,
+      "prompt": "The upgrade response must not be built from a full `users[email]` record without removing `password`, and no changed log call may pass the password, the token or the request body. Score 0 on any occurrence.",
+      "source": "spec/plans/nfr.md (Security, SECURITY-03 and SECURITY-11)"
+    },
+    {
+      "id": "ARCH-06",
+      "metric": "UI state comes from the server response",
+      "weight": 0.15,
+      "prompt": "In the changed Billing page code, plan name, price, usages and renewal date after Confirm come from the response passed to `setData`; no `window.location.reload`, `location.href =` or hard-coded Premium plan object is used to update the page. Score 0 on any of these.",
+      "source": "spec/plans/requirements.md (REQ-F-07), spec/plans/functional-design.md (Section 4)"
+    }
+  ]
+}

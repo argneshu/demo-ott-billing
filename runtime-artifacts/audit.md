@@ -127,3 +127,138 @@
 **AIRE VERSION**: 1.0
 
 ---
+## NFR Requirements - Answers and Completion Prompt
+**Timestamp**: 2026-10-14T10:56:48Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "done" (answers Q1 A, Q2 A, Q3 A)
+**AI Response**: Wrote spec/plans/nfr.md (## NFR Requirements). Security Baseline compliance: SECURITY-03/05/10/11/15 required; SECURITY-08 accepted deviation (Q1 A); SECURITY-04/07/09/12 pre-existing, out of scope; others N/A. Presented approval prompt.
+**Context**: NFR Requirements Steps 5-7
+
+---
+## NFR Requirements - Approval
+**Timestamp**: 2026-10-14T10:57:34Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "Continue to Next Stage"
+**AI Response**: NFR Requirements approved. NFR Design and Infrastructure Design skipped per plan. Reached the STOP CHECKPOINT. Asked CI/CD opt-in (chat-only): "Set up the CI/CD eval pipeline for this project? (yes/no)".
+**Context**: NFR Requirements Step 9; STOP CHECKPOINT Step 1 and 1.2
+**AIRE VERSION**: 1.0
+
+---
+## STOP CHECKPOINT - CI/CD Opt-In
+**Timestamp**: 2026-10-14T10:58:59Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no"
+**AI Response**: Recorded CI/CD Enabled: No (user opt-out). Steps 1.6 and 4 (pipeline generation, epic smoke test) skipped; common/ci-pipeline-generation.md not loaded. Proceeding with Steps 1.3-1.5, 1.7.
+**Context**: STOP CHECKPOINT Step 1.2
+**AIRE VERSION**: 1.0
+
+---
+## STOP CHECKPOINT - Cycle behaviour spec, architecture and rubrics
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**AI Response**: Wrote spec/behavior.feature (4 cross-story journeys, not copies of per-story scenarios); spec/plans/architecture.md v1.0.0 with C4Context, component flowchart, erDiagram, sequenceDiagram and Section 10 (ARCH-01..06, weights 0.25+0.20+0.15+0.10+0.15+0.15=1.00); derived architecture-rubric.json (1:1 from Section 10), security-rubric.json (A01,A02,A03,A05,A06,A07,A09,A10; SEC-01 excludes the accepted REQ-NF-01 deviation, reported by the code security review) and tests/.evals/config.json (created, thresholds at framework defaults, judge model claude-sonnet-5-5, CI disabled).
+**Context**: STOP CHECKPOINT Steps 1.3-1.5
+**AIRE VERSION**: 1.0
+
+---
+
+## Test Plan (ve-implement skill) - Story 1.1
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**Story**: "1.1 - Backend prorated upgrade to Premium - local Story ID"
+**Output folder**: `spec/test-plans/story-1.1-.../`
+**Mode**: workflow (invoked by the STOP CHECKPOINT specs & test-plans stage) - no Verification Engineer approval, no Verification Engineer branch, no Verification Engineer PR
+**Verification Engineer branch / PR**: "none - workflow mode, files written on epic/self-serve-premium-upgrade and carried by the caller's commit"
+**Test plans generated**: "8 cases"
+**Approve / Request Changes checkpoint**: Approved (automatic - workflow mode, no Verification Engineer review)
+**AI Response**: Generated manual black-box test plans from acceptance criteria.
+**Context**: ve-implement skill - Test Plan
+**AIRE VERSION**: 1.0
+
+---
+
+## Test Plan (ve-implement skill) - Story 1.2
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**Story**: "1.2 - Upgrade request rejection paths - local Story ID"
+**Output folder**: `spec/test-plans/story-1.2-.../`
+**Mode**: workflow (invoked by the STOP CHECKPOINT specs & test-plans stage) - no Verification Engineer approval, no Verification Engineer branch, no Verification Engineer PR
+**Verification Engineer branch / PR**: "none - workflow mode, files written on epic/self-serve-premium-upgrade and carried by the caller's commit"
+**Test plans generated**: "7 cases"
+**Approve / Request Changes checkpoint**: Approved (automatic - workflow mode, no Verification Engineer review)
+**AI Response**: Generated manual black-box test plans from acceptance criteria.
+**Context**: ve-implement skill - Test Plan
+**AIRE VERSION**: 1.0
+
+---
+
+## Test Plan (ve-implement skill) - Story 1.3
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**Story**: "1.3 - Upgrade button for Standard users - local Story ID"
+**Output folder**: `spec/test-plans/story-1.3-.../`
+**Mode**: workflow (invoked by the STOP CHECKPOINT specs & test-plans stage) - no Verification Engineer approval, no Verification Engineer branch, no Verification Engineer PR
+**Verification Engineer branch / PR**: "none - workflow mode, files written on epic/self-serve-premium-upgrade and carried by the caller's commit"
+**Test plans generated**: "6 cases"
+**Approve / Request Changes checkpoint**: Approved (automatic - workflow mode, no Verification Engineer review)
+**AI Response**: Generated manual black-box test plans from acceptance criteria.
+**Context**: ve-implement skill - Test Plan
+**AIRE VERSION**: 1.0
+
+---
+
+## Test Plan (ve-implement skill) - Story 1.4
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**Story**: "1.4 - Upgrade confirmation modal with prorated preview - local Story ID"
+**Output folder**: `spec/test-plans/story-1.4-.../`
+**Mode**: workflow (invoked by the STOP CHECKPOINT specs & test-plans stage) - no Verification Engineer approval, no Verification Engineer branch, no Verification Engineer PR
+**Verification Engineer branch / PR**: "none - workflow mode, files written on epic/self-serve-premium-upgrade and carried by the caller's commit"
+**Test plans generated**: "10 cases"
+**Approve / Request Changes checkpoint**: Approved (automatic - workflow mode, no Verification Engineer review)
+**AI Response**: Generated manual black-box test plans from acceptance criteria.
+**Context**: ve-implement skill - Test Plan
+**AIRE VERSION**: 1.0
+
+---
+
+## Test Plan (ve-implement skill) - Story 1.5
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**Story**: "1.5 - Confirm upgrade and refresh Billing page - local Story ID"
+**Output folder**: `spec/test-plans/story-1.5-.../`
+**Mode**: workflow (invoked by the STOP CHECKPOINT specs & test-plans stage) - no Verification Engineer approval, no Verification Engineer branch, no Verification Engineer PR
+**Verification Engineer branch / PR**: "none - workflow mode, files written on epic/self-serve-premium-upgrade and carried by the caller's commit"
+**Test plans generated**: "7 cases"
+**Approve / Request Changes checkpoint**: Approved (automatic - workflow mode, no Verification Engineer review)
+**AI Response**: Generated manual black-box test plans from acceptance criteria.
+**Context**: ve-implement skill - Test Plan
+**AIRE VERSION**: 1.0
+
+---
+
+## STOP CHECKPOINT - Behaviour Specs & Test Plans: coverage check and approval prompt
+**Timestamp**: 2026-10-14T11:01:41Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "no" (CI/CD opt-out) / continuation
+**AI Response**: Coverage check passed: 23/23 ACs have at least one @AC scenario and at least one test case; every unit has a .feature file and a test-plan folder. Presented the 2-option approval prompt (awaiting response).
+**Context**: specs-and-test-plans.md Section 4.1
+**AIRE VERSION**: 1.0
+
+---
+
+## Behaviour Specs & Test Plans - Approval
+**Timestamp**: 2026-10-14T11:04:21Z
+**User Email**: argneshu.gupta@3pillarglobal.com
+**User Input**: "Continue to Next Stage"
+**AI Response**: Approved. Marked state "Design complete - awaiting dev-implement". Post-design coverage re-verified 17/17. Committing and pushing design artifacts on the epic branch. CI/CD disabled, so the epic-level smoke test is skipped.
+**Context**: specs-and-test-plans.md Section 4; STOP CHECKPOINT Steps 2-4
+**AIRE VERSION**: 1.0
+
+---

@@ -3,7 +3,7 @@
 ## Project Information
 - **Project Type**: Brownfield
 - **Start Date**: 2026-10-14T10:32:49Z
-- **Current Stage**: IMPLEMENTATION - NFR Requirements (awaiting answers)
+- **Current Stage**: IMPLEMENTATION - Design complete - awaiting dev-implement
 - **AIRE Version**: 1.0
 
 ## Workspace State
@@ -62,10 +62,10 @@
 - [ ] Application Design - SKIP
 ### IMPLEMENTATION PHASE
 - [x] Functional Design (approved 2026-10-14T10:54:38Z)
-- [ ] NFR Requirements - EXECUTE (minimal; questions pending)
-- [ ] NFR Design - SKIP
-- [ ] Infrastructure Design - SKIP
-- [ ] Behaviour Specs & Test Plans - EXECUTE (ALWAYS)
+- [x] NFR Requirements (approved 2026-10-14T10:57:34Z)
+- [x] NFR Design - SKIPPED
+- [x] Infrastructure Design - SKIPPED
+- [x] Behaviour Specs & Test Plans (approved 2026-10-14T11:04:21Z)
 - [ ] Code Generation - EXECUTE (per story, dev-implement)
 
 ## User Stories Settings
@@ -98,3 +98,22 @@ graph TD
 - Immediately startable: 1.1, 1.3 (independent lanes: backend and UI)
 - Blocked: 1.2 (by 1.1), 1.4 (by 1.3), 1.5 (by 1.1 and 1.4)
 - Shared files: src/backend/main.py (1.1, 1.2); src/frontend/src/pages/Billing.jsx and src/frontend/src/App.css (1.3, 1.4, 1.5)
+
+## CI/CD Configuration
+- **Enabled**: No
+- **Source**: user opt-out
+- **Recorded**: 2026-10-14T10:58:59Z
+
+## Behaviour Specs & Test Plans
+- **Work units covered**: 5
+- **Behaviour contracts**: spec/behavior/ - 5 file(s), 23 scenarios (plus spec/behavior.feature, 4 cross-story journeys)
+- **Manual test plans**: spec/test-plans/ - 5 folder(s), 38 test cases
+- **AC coverage**: 23/23 (scenarios) | 23/23 (test cases)
+- **Approved**: 2026-10-14T11:04:21Z
+
+## Architecture
+- architecture.md v1.0.0 written 2026-10-14T11:01:41Z; 6 verifiable constraints (weights sum 1.0)
+- tests/.evals/rubrics/architecture-rubric.json v1.0.0 (6 criteria), security-rubric.json v1.0.0 (8 OWASP criteria), tests/.evals/config.json created
+
+## Requirements Coverage Verification
+- Requirements coverage verified post-design: 17/17 applicable REQ-IDs - 2026-10-14T11:04:21Z (no design artifact contradicted a story AC)
