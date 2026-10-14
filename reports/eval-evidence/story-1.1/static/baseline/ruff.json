@@ -1,0 +1,75 @@
+[
+  {
+    "cell": null,
+    "code": "I001",
+    "end_location": {
+      "column": 41,
+      "row": 6
+    },
+    "filename": "/Users/argneshu.gupta/demo-ott-billing/src/backend/main.py",
+    "fix": {
+      "applicability": "safe",
+      "edits": [
+        {
+          "content": "from datetime import datetime, timedelta\nfrom pathlib import Path\n\nfrom fastapi import FastAPI, HTTPException, status\nfrom fastapi.middleware.cors import CORSMiddleware\nfrom fastapi.staticfiles import StaticFiles\nfrom pydantic import BaseModel\n\n",
+          "end_location": {
+            "column": 1,
+            "row": 8
+          },
+          "location": {
+            "column": 1,
+            "row": 1
+          }
+        }
+      ],
+      "message": "Organize imports"
+    },
+    "location": {
+      "column": 1,
+      "row": 1
+    },
+    "message": "Import block is un-sorted or un-formatted",
+    "name": "unsorted-imports",
+    "noqa_row": 1,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/unsorted-imports"
+  },
+  {
+    "cell": null,
+    "code": "DTZ002",
+    "end_location": {
+      "column": 38,
+      "row": 104
+    },
+    "filename": "/Users/argneshu.gupta/demo-ott-billing/src/backend/main.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 104
+    },
+    "message": "`datetime.datetime.today()` used",
+    "name": "call-datetime-today",
+    "noqa_row": 104,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/call-datetime-today"
+  },
+  {
+    "cell": null,
+    "code": "DTZ002",
+    "end_location": {
+      "column": 38,
+      "row": 109
+    },
+    "filename": "/Users/argneshu.gupta/demo-ott-billing/src/backend/main.py",
+    "fix": null,
+    "location": {
+      "column": 22,
+      "row": 109
+    },
+    "message": "`datetime.datetime.today()` used",
+    "name": "call-datetime-today",
+    "noqa_row": 109,
+    "severity": "error",
+    "url": "https://docs.astral.sh/ruff/rules/call-datetime-today"
+  }
+]

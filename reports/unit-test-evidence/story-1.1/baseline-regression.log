@@ -1,0 +1,4 @@
+BASELINE REGRESSION - story-1.1 - branch story/1.1-backend-prorated-upgrade-to-premium (cut from epic/self-serve-premium-upgrade)
+Command: pytest (from src/backend, using the project venv)
+Result: no test suite exists in the repository (tests/ directory absent before this story). 0 tests collected.
+Pass/fail: 0 passed, 0 failed. Recorded explicitly; the post-change gate covers only this story's new tests.

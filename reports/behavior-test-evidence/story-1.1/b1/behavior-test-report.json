@@ -1,0 +1,68 @@
+{
+  "tier": "b1",
+  "key": "story-1.1",
+  "scenarios": [
+    {
+      "feature": "spec/behavior/story-1.1.feature",
+      "scenario": "Prorated charge for the days remaining",
+      "tags": [
+        "@AC-1"
+      ],
+      "runs": 5,
+      "result": "PASS"
+    },
+    {
+      "feature": "spec/behavior/story-1.1.feature",
+      "scenario": "Unparseable renewal date is treated as no days remaining",
+      "tags": [
+        "@AC-2"
+      ],
+      "runs": 1,
+      "result": "PASS"
+    },
+    {
+      "feature": "spec/behavior/story-1.1.feature",
+      "scenario": "Successful upgrade applies the Premium plan",
+      "tags": [
+        "@AC-3"
+      ],
+      "runs": 1,
+      "result": "PASS"
+    },
+    {
+      "feature": "spec/behavior/story-1.1.feature",
+      "scenario": "Renewal date is unchanged by the upgrade",
+      "tags": [
+        "@AC-4"
+      ],
+      "runs": 1,
+      "result": "PASS"
+    },
+    {
+      "feature": "spec/behavior/story-1.1.feature",
+      "scenario": "Premium data is not shared between accounts",
+      "tags": [
+        "@AC-5"
+      ],
+      "runs": 1,
+      "result": "PASS"
+    }
+  ],
+  "scenariosPassed": 5,
+  "scenariosTotal": 5,
+  "acTags": [
+    "@AC-1",
+    "@AC-2",
+    "@AC-3",
+    "@AC-4",
+    "@AC-5"
+  ],
+  "acTagsExecuted": [
+    "@AC-1",
+    "@AC-2",
+    "@AC-3",
+    "@AC-4",
+    "@AC-5"
+  ],
+  "status": "PASS"
+}

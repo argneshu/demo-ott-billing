@@ -1,0 +1,17 @@
+{
+  "key": "story-1.1",
+  "base": "9eb1a1f4c7dd4823f495e0b8f8591e6b934fa369",
+  "threshold": 90.0,
+  "files": [
+    {
+      "path": "src/backend/main.py",
+      "changedExecutableLines": 34,
+      "coveredLines": 34,
+      "changedBranches": 4,
+      "coveredBranches": 4
+    }
+  ],
+  "lineCoverage": 100.0,
+  "branchCoverage": 100.0,
+  "status": "PASS"
+}

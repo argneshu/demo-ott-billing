@@ -1,0 +1,6 @@
+# Behaviour-tier image (AIRE common/behavior-spec.md Section 5). Same image locally and in CI.
+FROM docker.io/library/python:3.14-slim
+WORKDIR /work
+COPY src/backend/requirements.txt src/backend/requirements-dev.txt /tmp/deps/
+RUN pip install --no-cache-dir -r /tmp/deps/requirements-dev.txt
+ENTRYPOINT ["/bin/sh", "-c"]
