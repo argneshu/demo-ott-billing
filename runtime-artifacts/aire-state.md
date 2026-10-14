@@ -3,7 +3,7 @@
 ## Project Information
 - **Project Type**: Brownfield
 - **Start Date**: 2026-10-14T10:32:49Z
-- **Current Stage**: PLANNING - Workflow Planning
+- **Current Stage**: IMPLEMENTATION - Functional Design (awaiting answers)
 - **AIRE Version**: 1.0
 
 ## Workspace State
@@ -58,7 +58,15 @@
 - [x] Requirements Analysis (approved 2026-10-14T10:43:14Z)
 - [ ] User Stories (GATE 1 approved 2026-10-14T10:50:08Z; stories local, Tracker ID LOCAL)
 - [x] Dependency Graph (auto-generated 2026-10-14T10:50:08Z)
-- [ ] Workflow Planning
+- [x] Workflow Planning (auto-announced 2026-10-14T10:50:55Z)
+- [ ] Application Design - SKIP
+### IMPLEMENTATION PHASE
+- [ ] Functional Design - EXECUTE (questions pending)
+- [ ] NFR Requirements - EXECUTE (minimal)
+- [ ] NFR Design - SKIP
+- [ ] Infrastructure Design - SKIP
+- [ ] Behaviour Specs & Test Plans - EXECUTE (ALWAYS)
+- [ ] Code Generation - EXECUTE (per story, dev-implement)
 
 ## User Stories Settings
 - team_size: 2
